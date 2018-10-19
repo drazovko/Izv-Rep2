@@ -7,6 +7,7 @@
 #include<random>
 #include<chrono>
 #include<sstream>
+#include<ifaddrs.h>
 using namespace std;
 using namespace std::chrono;
 using namespace Poco::Net;
@@ -138,11 +139,52 @@ private:
     }
 };
 
+string getIPAddres(){
+    string ipAddress = "Unable to get IP Address";
+    struct ifaddrs* interfaces = nullptr;
+    struct ifaddrs* temp_addr = nullptr;
+    int success = 0;
+    //retrive the current interfaces - returns 0 on success
+    success = getifaddrs(&interfaces);
+    if(success == 0){
+        //Loop through linked list of interfaces
+        temp_addr = interfaces;
+        while(temp_addr != nullptr){
+            if(temp_addr->ifa_addr->sa_family == AF_INET){
+                cout << temp_addr->ifa_name << endl
+                 << "AF_INET" << endl
+                 << inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr) << endl;
+                // Check if interface is en0 which is the wifi connection 
+                if(strcmp(temp_addr->ifa_name, "ens33") == 0){
+                    ipAddress = inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr);
+                }
+            } else {
+                if(temp_addr->ifa_addr->sa_family == AF_INET6){
+                    cout << temp_addr->ifa_name << endl
+                         << "AF_INET6" << endl
+                         << inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr) << endl;
+                } else{
+                    cout << temp_addr->ifa_name << endl
+                         << temp_addr->ifa_addr->sa_family << endl
+                         << inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr) << endl;
+                }
+            }
+            cout << endl;
+            temp_addr = temp_addr->ifa_next;
+        }
+    }
+    // Free memory
+    freeifaddrs(interfaces);
+    return ipAddress;
+}
+
 
 int main(){
     char novaKomanda;
     PorukaMajstor porukaMajstor;
     string poruka;
+
+    cout << getIPAddres() << endl << endl;
     string IPAdresaPosluziteljaZaPronalazenje = "192.168.1.21";
 
     SocketAddress sa("0.0.0.0", 12000);
