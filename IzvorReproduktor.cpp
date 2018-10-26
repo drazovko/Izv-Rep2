@@ -68,6 +68,7 @@ public:
         return poruka;
     }
     u_char* STREAM_ADVERTISEMENT2() {
+        cout << "\n\tSlazem poruku MSG_STREAM_ADVERTISEMENT: " << endl << endl;
         porukaBr4.tipPoruke = MSG_STREAM_ADVERTISEMENT;;
         uint64_t klasaC = 0x4000000000000000;
         cout << "Klasa C = " << klasaC << ", hex = " << hex << klasaC 
@@ -87,16 +88,26 @@ public:
         porukaBr4.adresaIzvora.port = 12000;
         porukaBr4.adresaIzvora.port = byteOrderMoj.toNetwork(porukaBr4.adresaIzvora.port);
         
+        cout << "\n\tSlozena poruka u mreznom obliku: " << endl;
+        cout << "Tip poruke:\t\t" << (int)porukaBr4.tipPoruke << endl;
+        cout << "Identif.strujanja:\t" << porukaBr4.identifikatorStrujanja 
+            << ", hex: " << hex << porukaBr4.identifikatorStrujanja << dec << endl;
+        cout << "Tip lokalne sdrese:\t" << (int)porukaBr4.adresaIzvora.tipArdese << endl;
+        cout << "Lokalna IP adresa:\t" << porukaBr4.adresaIzvora.IPAdresa 
+            << ", hex: " << hex << porukaBr4.adresaIzvora.IPAdresa << dec << endl;
+        cout << "Lokalni broj porta:\t" << porukaBr4.adresaIzvora.port
+             << ", hex: " << hex << porukaBr4.adresaIzvora.port << dec << endl << endl;
+
         u_char* A;
         A = (u_char*)&porukaBr4;
         u_char B;
         int BB;
-        cout << "Hex: " << endl;
-        for(int i = 1; i<=32; i++){
+        cout << "\nPrikaz poruke po bajtovima u hexu: " << endl;
+        for(int i = 1; i<=30; i++){
             cout << i << " ";
         }
         cout << endl << hex;
-        for(int i = 0; i<32; i++){
+        for(int i = 0; i<30; i++){
             BB = (int)A[i];
             cout << BB << " ";
         }
@@ -185,7 +196,7 @@ int main(){
     string poruka;
 
     cout << getIPAddres() << endl << endl;
-    string IPAdresaPosluziteljaZaPronalazenje = "192.168.1.21";
+    string IPAdresaPosluziteljaZaPronalazenje = "192.168.5.86";
 
     SocketAddress sa("0.0.0.0", 12000);
     DatagramSocket ds(sa);
@@ -231,11 +242,8 @@ int main(){
                 A = porukaMajstor.STREAM_ADVERTISEMENT2();
                 do
                 {
-                    cout << "\tMSG_STREAM_ADVERTISEMENT\n\n";
-                    cout << " Ovo su moji podaci: "<< sa.toString() 
-                         << "\n" << endl;
                     int n = ds.sendTo(A, 28, socAddrPosluziteljaZaPronalazenje);
-                    
+                    cout << "\n\tPoruka poslana serveru!!!" << endl << endl;
                     cout << "---------------Cekam odgovor 3 sekunde---------" << endl << endl;
                     bool ispisParametara = true;
                     try
@@ -249,7 +257,7 @@ int main(){
                         ispisParametara = false;
                     }
                     if(ispisParametara){
-                        cout << "   Odgovor:" << endl;
+                        cout << "   Odgovor u mreznom obliku:" << endl;
                         struct StreamRegistredStruktura {
                             u_int8_t tipPoruke;
                             u_int64_t identifikatorStrujanja;
@@ -261,20 +269,27 @@ int main(){
                         StreamRegistredStruktura* pokStreamRegistredStruktura;
                         pokStreamRegistredStruktura = (StreamRegistredStruktura*)&poljeZaPrijem[0];
                         dolaznaPorukaStreamRegistred = *pokStreamRegistredStruktura;
+                        Poco::ByteOrder byteOrdermoj2;
+                        char polje[1024];
+                        string string3;
                         switch (dolaznaPorukaStreamRegistred.tipPoruke)
                         {
                             case imePoruke::MSG_STREAM_REGISTERED:
-                                cout << "Tip poruke: " << (int)dolaznaPorukaStreamRegistred.tipPoruke
+                                cout << "Tip poruke:\t\t" << (int)dolaznaPorukaStreamRegistred.tipPoruke
                                      << endl;
                                 cout << "Identif.strujanja:\t" << dolaznaPorukaStreamRegistred.identifikatorStrujanja
-                                     << endl;
-                                cout << "TTL u sekund:\t" << dolaznaPorukaStreamRegistred.TTL_u_sekundama
+                                     << ", hex: " << hex << dolaznaPorukaStreamRegistred.identifikatorStrujanja << dec << endl;
+                                cout << "TTL u sekund:\t\t" << dolaznaPorukaStreamRegistred.TTL_u_sekundama
                                      << endl;
                                 cout << "Tip javne adrese:\t" << (int)dolaznaPorukaStreamRegistred.tipJavneAdrese
                                      << endl;
+                                string3 = inet_ntop(AF_INET, &dolaznaPorukaStreamRegistred.javnaIPAdresa, polje, INET_ADDRSTRLEN);
                                 cout << "Javna IP adresa:\t" << dolaznaPorukaStreamRegistred.javnaIPAdresa
-                                     << endl;
-                                cout << "Broj porta:\t" << dolaznaPorukaStreamRegistred.javniBrojPorta
+                                     << ", hex: " << hex << dolaznaPorukaStreamRegistred.javnaIPAdresa << dec 
+                                     << ", " << string3 << endl;
+                                cout << "Broj porta:\t\t" << dolaznaPorukaStreamRegistred.javniBrojPorta
+                                     << ", hex: " << hex << dolaznaPorukaStreamRegistred.javniBrojPorta << dec
+                                     << ", " << byteOrdermoj2.fromNetwork(dolaznaPorukaStreamRegistred.javniBrojPorta)
                                      << endl << endl;
                                 break;
                         
