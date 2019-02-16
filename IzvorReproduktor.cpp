@@ -67,16 +67,23 @@ public:
         poruka.append("Ovo je ping poruka");
         return poruka;
     }
-    u_char* STREAM_ADVERTISEMENT2() {
+    u_char* STREAM_ADVERTISEMENT2(bool fiksniIdentifikator = false) {
         cout << "\n\tSlazem poruku MSG_STREAM_ADVERTISEMENT: " << endl << endl;
         porukaBr4.tipPoruke = MSG_STREAM_ADVERTISEMENT;;
         uint64_t klasaC = 0x4000000000000000;
         cout << "Klasa C = " << klasaC << ", hex = " << hex << klasaC 
              << dec << endl;
-        IdentifikatorStrujanja();
-        cout << "Identifikator str. = " << identifikatorStrujanja
-             << hex << ", hex = " << identifikatorStrujanja << dec << endl;
-        porukaBr4.identifikatorStrujanja = klasaC | identifikatorStrujanja;
+        if(fiksniIdentifikator == false){
+            IdentifikatorStrujanja();
+            cout << "Identifikator str. = " << identifikatorStrujanja
+                 << hex << ", hex = " << identifikatorStrujanja << dec << endl;
+            porukaBr4.identifikatorStrujanja = klasaC | identifikatorStrujanja;
+        }else{
+            porukaBr4.identifikatorStrujanja = klasaC | 7;
+            cout << "Identifikator str. = " << identifikatorStrujanja
+                 << hex << ", hex = " << identifikatorStrujanja << dec << endl;
+        }
+        
         cout << "Identifikator str. + klC = " << porukaBr4.identifikatorStrujanja
              << ", hex = " << hex << porukaBr4.identifikatorStrujanja 
              << dec << endl;
@@ -191,12 +198,12 @@ string getIPAddres(){
 
 
 int main(){
-    char novaKomanda;
+    int novaKomanda;
     PorukaMajstor porukaMajstor;
     string poruka;
 
     cout << getIPAddres() << endl << endl;
-    string IPAdresaPosluziteljaZaPronalazenje = "192.168.5.86";
+    string IPAdresaPosluziteljaZaPronalazenje = "192.168.5.101";
 
     SocketAddress sa("0.0.0.0", 12000);
     DatagramSocket ds(sa);
@@ -210,36 +217,46 @@ int main(){
     ds.setReceiveTimeout(timeSpanZaPrijem); 
     SocketAddress posiljatelj;
     u_char poljeZaPrijem[1024];
+    int brojKomande = 4;
     do{
-        cout << "Unesite broj za komandu: \n" << endl;
-        cout << "MSG_PING =             1\n"
-            << "MSG_PONG =             2\n"
-            << "MSG_PONG_REG_REQ =     3\n" 
-            << "MSG_STREAM_ADVERTISEMENT = 4\n"
-            << "MSG_STREAM_REGISTERED = 5\n"
-            << "MSG_IDENTIFIER_NOT_USABLE = 6\n" 
-            << "MSG_FIND_STREAM_SOURCE = 7\n"
-            << "MSG_STREAM_SOURCE_DATA = 8\n" 
-            << "MSG_STREAM_REMOVE =    9\n" 
-            << "MSG_MULTIMEDIA =       10\n" 
-            << "MSG_REQUEST_STREAMING = 11\n" 
-            << "MSG_FORWARD_PLAYER_READY = 12\n"
-            << "MSG_PLAYER_READY =     13\n"
-            << "MSG_SOURCE_READY =     14\n"
-            << "MSG_REQ_RELAY_LIST =   15\n"
-            << "MSG_RELAY_LIST =       16\n"
-            << "MSG_SHUTTING_DOWN =    17\n"
-            << "MSG_PLEASE_FORWARD =   18\n"
-            << "MSG_REGISTER_FORWARDING = 19\n" << endl;
+//        if(brojKomande == 4){
+            cout << "MSG_PING =             1\n"
+                << "MSG_PONG =             2\n"
+                << "MSG_PONG_REG_REQ =     3\n" 
+                << "MSG_STREAM_ADVERTISEMENT = 4\n"
+                << "Slanje fiksnog ident.br. = 44\n"
+                << "MSG_STREAM_REGISTERED = 5\n"
+                << "MSG_IDENTIFIER_NOT_USABLE = 6\n" 
+                << "MSG_FIND_STREAM_SOURCE = 7\n"
+                << "MSG_STREAM_SOURCE_DATA = 8\n" 
+                << "MSG_STREAM_REMOVE =    9\n" 
+                << "MSG_MULTIMEDIA =       10\n" 
+                << "MSG_REQUEST_STREAMING = 11\n" 
+                << "MSG_FORWARD_PLAYER_READY = 12\n"
+                << "MSG_PLAYER_READY =     13\n"
+                << "MSG_SOURCE_READY =     14\n"
+                << "MSG_REQ_RELAY_LIST =   15\n"
+                << "MSG_RELAY_LIST =       16\n"
+                << "MSG_SHUTTING_DOWN =    17\n"
+                << "MSG_PLEASE_FORWARD =   18\n"
+                << "MSG_REGISTER_FORWARDING = 19\n" 
+                << "Kraj programa =         0\n" << endl;
+//        }
         cout << "Unesite broj komande: ";
-        int brojKomande;
         cin >> brojKomande;
         u_char* A;
+        char ponovoPoslati;
         switch (brojKomande)
         {
+            case 44:
+                cout << "\tSlanje fiksnog identifikacijskog broja" << endl;
             case imePoruke::MSG_STREAM_ADVERTISEMENT:
-                char ponovoPoslati;
-                A = porukaMajstor.STREAM_ADVERTISEMENT2();
+                
+                if(brojKomande == 44){
+                    A = porukaMajstor.STREAM_ADVERTISEMENT2(true);
+                }else{
+                    A = porukaMajstor.STREAM_ADVERTISEMENT2();
+                }
                 do
                 {
                     int n = ds.sendTo(A, 28, socAddrPosluziteljaZaPronalazenje);
@@ -257,7 +274,7 @@ int main(){
                         ispisParametara = false;
                     }
                     if(ispisParametara){
-                        cout << "   Odgovor u mreznom obliku:" << endl;
+                        cout << "   Odgovor u mreznom obliku:" << endl << endl;
                         struct StreamRegistredStruktura {
                             u_int8_t tipPoruke;
                             u_int64_t identifikatorStrujanja;
@@ -269,6 +286,15 @@ int main(){
                         StreamRegistredStruktura* pokStreamRegistredStruktura;
                         pokStreamRegistredStruktura = (StreamRegistredStruktura*)&poljeZaPrijem[0];
                         dolaznaPorukaStreamRegistred = *pokStreamRegistredStruktura;
+                        struct IdentifierNotUsableStruktura {
+                            u_int8_t tipPoruke;
+                            u_int64_t identifikatorStrujanja;
+                            uint8_t tipJavneAdrese;
+                            uint32_t javnaIPAdresa;
+                            uint16_t javniBrojPorta;
+                        } dolaznaPorukaIdentifierNotUsable;
+                        IdentifierNotUsableStruktura* pokIdentifierNotUsableStruktura;
+                        pokIdentifierNotUsableStruktura =(IdentifierNotUsableStruktura*)&poljeZaPrijem[0];
                         Poco::ByteOrder byteOrdermoj2;
                         char polje[1024];
                         string string3;
@@ -292,38 +318,52 @@ int main(){
                                      << ", " << byteOrdermoj2.fromNetwork(dolaznaPorukaStreamRegistred.javniBrojPorta)
                                      << endl << endl;
                                 break;
-                        
+                            case imePoruke::MSG_IDENTIFIER_NOT_USABLE:
+                                dolaznaPorukaIdentifierNotUsable = *pokIdentifierNotUsableStruktura;
+                                cout << "Broj i tip poruke:\t" << (int)dolaznaPorukaIdentifierNotUsable.tipPoruke
+                                     << ", MSG_IDENTIFIER_NOT_USABLE" << endl;
+                                cout << "Identif.strujanja:\t" << dolaznaPorukaIdentifierNotUsable.identifikatorStrujanja
+                                     << ", hex: " << hex << dolaznaPorukaIdentifierNotUsable.identifikatorStrujanja << dec << endl;
+                                cout << "Tip javne adrese:\t" << (int)dolaznaPorukaIdentifierNotUsable.tipJavneAdrese
+                                     << endl;
+                                string3 = inet_ntop(AF_INET, &dolaznaPorukaIdentifierNotUsable.javnaIPAdresa, polje, INET_ADDRSTRLEN);
+                                cout << "Javna IP adresa:\t" << dolaznaPorukaIdentifierNotUsable.javnaIPAdresa
+                                     << ", hex: " << hex << dolaznaPorukaIdentifierNotUsable.javnaIPAdresa << dec 
+                                     << ", " << string3 << endl;
+                                cout << "Broj porta:\t\t" << dolaznaPorukaIdentifierNotUsable.javniBrojPorta
+                                     << ", hex: " << hex << dolaznaPorukaIdentifierNotUsable.javniBrojPorta << dec
+                                     << ", " << byteOrdermoj2.fromNetwork(dolaznaPorukaIdentifierNotUsable.javniBrojPorta)
+                                     << endl << endl;
+                                break; 
                             default:
-                                cout << "Primljena je poruka nepoznatog tipa: "
-                                     << dolaznaPorukaStreamRegistred.tipPoruke << endl;
+                                cout << "Primljena je poruka nepoznatog tipa, broj poruke je "
+                                     << (int)dolaznaPorukaStreamRegistred.tipPoruke << endl;
                                 break;
                         }
                     }
                     cout << "\nPonovo poslati isti identifikator strujanja?(d/n) ";
                     cin >> ponovoPoslati;
                 } while (ponovoPoslati == 'd');
-                
-                
+                break;
+
+            
+            case 0:
+                cout << "Kraj programa!!!!" << endl << endl;
                 break;
             case MSG_PONG:
-                cout << "Pong" << endl;
-                //    break;
-    
+                do{
+                    cout << "Pong :-)" << endl;
+                    cout << "\tNije implementirano" << endl << endl;
+                    cout << "Ponovo poslati pong? (d/n) ";
+                    cin >> ponovoPoslati;
+                }while(ponovoPoslati == 'd');
+                break;
             default:
                 cout << "\tNije implementirano" << endl << endl;
                 break;
         } 
-
-        cout << "\nNova komanda?(d/n) ";
-        cin >> novaKomanda;
-    }while(novaKomanda == 'd');
+        novaKomanda = brojKomande;
+    }while(novaKomanda != 0);
     
-    
-
-    
-/*
-    char ooo;
-    cout << "\nUnesite znak za kraj: ";
-    cin >> ooo;
-*/    return 0;
+    return 0;
 }
