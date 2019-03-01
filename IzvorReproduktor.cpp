@@ -71,6 +71,36 @@ public:
         poruka.append("Ovo je ping poruka");
         return poruka;
     }
+    u_char* FIND_STREAM_SOURCE(u_int64_t izbornik){
+        cout << "\n\tSlažem poruku MSG_FIND_STREAM_SOURCE: " << endl << endl;
+        porukaBr9.tipPoruke = MSG_FIND_STREAM_SOURCE;
+        uint64_t klasaC = 0x4000000000000000;
+        switch(izbornik){
+            case 1:
+                porukaBr9.identifikatorStrujanja = klasaC;
+                break;
+            case 2:
+                IdentifikatorStrujanja();
+                cout << "Identifikator str. = " << identifikatorStrujanja
+                 << hex << ", hex = " << identifikatorStrujanja << dec << endl;
+                porukaBr9.identifikatorStrujanja = klasaC | identifikatorStrujanja;
+                break;
+            default:
+                porukaBr9.identifikatorStrujanja = izbornik;
+        }
+        cout << "Identifikator str. + klC = " << porukaBr9.identifikatorStrujanja
+             << ", hex = " << hex << porukaBr9.identifikatorStrujanja 
+             << dec << endl;
+        porukaBr9.identifikatorStrujanja = byteOrderMoj.toNetwork(porukaBr9.identifikatorStrujanja);  
+        cout << "\tU mrežnom obliku: " << endl;
+        cout << "Identifikator str. + klC = " << porukaBr9.identifikatorStrujanja
+             << ", hex = " << hex << porukaBr9.identifikatorStrujanja 
+             << dec << endl;
+        u_char* A;
+        A = (u_char*)&porukaBr9;
+        PrikazPorukePoBajtovima(A, 16);
+        return A;
+    }
     u_char* STREAM_REMOVE(bool fiksniIdentifikator = false){
         cout << "\n\tSlazem poruku MSG_STREAM_REMOVE: " << endl << endl;
         porukaBr9.tipPoruke = MSG_STREAM_REMOVE;
@@ -182,6 +212,20 @@ public:
     }
 
 private:
+    void PrikazPorukePoBajtovima(u_char* A, int brojBajtova){
+        u_char B;
+        int BB;
+        cout << "\nPrikaz poruke po bajtovima u hexu: " << endl;
+        for(int i = 1; i<=brojBajtova; i++){
+            cout << i << " ";
+        }
+        cout << endl << hex;
+        for(int i = 0; i<brojBajtova; i++){
+            BB = (int)A[i];
+            cout << BB << " ";
+        }
+        cout << endl << dec;
+    }
     uint64_t& IdentifikatorStrujanja(){
         int najmanji{1};
         int najveci{1000000};
@@ -281,7 +325,7 @@ int main(){
         cout << "Unesite broj komande: ";
         cin >> brojKomande;
         u_char* A;
-        char ponovoPoslati;
+        char ponovoPoslati = 'n';
         switch (brojKomande)
         {
             case 44:
@@ -400,7 +444,45 @@ int main(){
                     cout << "\nPonovo poslati FIKSNI identifikator strujanja sa porukom MSG_STREAM_REMOVE?(d/n) ";
                     cin >> ponovoPoslati;
                 } while (ponovoPoslati == 'd');
-
+                break;
+            case imePoruke::MSG_FIND_STREAM_SOURCE:
+                do{
+                    cout << "\n\tUpiši koji identifikator strujanja želiš: " << endl << endl;
+                    cout << "1. Fiksni identifikator strujanja" << endl;
+                    cout << "2. Slučajni identifikator strujanja" << endl;
+                    cout << "3. Upis identifikatora strujanja: " << endl << endl;
+                    u_int64_t izbornik;
+                    uint64_t klasaC =    0x4000000000000000;
+                    uint64_t klasaCMax = 0x40FFFFFFFFFFFFFF;
+                    cin >> izbornik;
+                    uint64_t identifikatorStrujanja;
+                    switch(izbornik){
+                        case 1:
+                            A = porukaMajstor.FIND_STREAM_SOURCE(1);
+                            break;
+                        case 2:
+                            A = porukaMajstor.FIND_STREAM_SOURCE(2);
+                            break;
+                        case 3:
+                            do{
+                                cout << "Upiši identifikator strujanja: " << endl << "Min = " << klasaC
+                                     << ", hex = " << hex << klasaC << dec << endl << "Max = " << klasaCMax
+                                     << ", hex = " << hex << klasaCMax << dec << endl << "______";
+                                cin >> identifikatorStrujanja;
+                            }while(identifikatorStrujanja < klasaC || identifikatorStrujanja > klasaCMax);
+                            A = porukaMajstor.FIND_STREAM_SOURCE(identifikatorStrujanja);
+                            break;
+                        default:
+                            "Nepostojeći izbor!";
+                            ponovoPoslati = 'd';
+                    }
+                }while(ponovoPoslati == 'd');
+                do{
+                    int n = ds.sendTo(A, 16, socAddrPosluziteljaZaPronalazenje);
+                    cout << "\n\tPoruka poslana serveru!!!" << endl << endl;
+                    cout << "\nPonovo poslati poruku MSG_FIND_STREAM_SOURCE?(d/n) ";
+                    cin >> ponovoPoslati;
+                } while (ponovoPoslati == 'd');
                 break;
             case 0:
                 cout << "Kraj programa!!!!" << endl << endl;
