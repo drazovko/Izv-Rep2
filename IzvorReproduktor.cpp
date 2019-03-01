@@ -58,6 +58,10 @@ public:
         uint64_t identifikatorStrujanja;
         AdresaIzvora adresaIzvora;
     } porukaBr4;
+    struct PorukaBr9{
+        uint8_t tipPoruke;
+        uint64_t identifikatorStrujanja;
+    } porukaBr9;
     PorukaMajstor() { }
     ~PorukaMajstor() { }
     string Ping(){
@@ -67,6 +71,37 @@ public:
         poruka.append("Ovo je ping poruka");
         return poruka;
     }
+    u_char* STREAM_REMOVE(bool fiksniIdentifikator = false){
+        cout << "\n\tSlazem poruku MSG_STREAM_REMOVE: " << endl << endl;
+        porukaBr9.tipPoruke = MSG_STREAM_REMOVE;
+        uint64_t klasaC = 0x4000000000000000;
+        if(fiksniIdentifikator == false){
+            porukaBr9.identifikatorStrujanja = porukaBr4.identifikatorStrujanja;
+            cout << "Identifikator str. = " << porukaBr9.identifikatorStrujanja
+             << hex << ", hex = " << porukaBr9.identifikatorStrujanja << dec << endl;
+        }else{
+            porukaBr9.identifikatorStrujanja = klasaC;
+            cout << "Identifikator str. je klasa C(fiksni identifikator) = " << porukaBr9.identifikatorStrujanja
+             << hex << ", hex = " << porukaBr9.identifikatorStrujanja << dec << endl;
+            porukaBr9.identifikatorStrujanja = byteOrderMoj.toNetwork(porukaBr9.identifikatorStrujanja);    
+        }
+        u_char* A;
+        A = (u_char*)&porukaBr9;
+        u_char B;
+        int BB;
+        cout << "\nPrikaz poruke po bajtovima u hexu: " << endl;
+        for(int i = 1; i<=16; i++){
+            cout << i << " ";
+        }
+        cout << endl << hex;
+        for(int i = 0; i<16; i++){
+            BB = (int)A[i];
+            cout << BB << " ";
+        }
+        cout << endl << dec;
+        return A;
+    }
+
     u_char* STREAM_ADVERTISEMENT2(bool fiksniIdentifikator = false) {
         cout << "\n\tSlazem poruku MSG_STREAM_ADVERTISEMENT: " << endl << endl;
         porukaBr4.tipPoruke = MSG_STREAM_ADVERTISEMENT;;
@@ -87,6 +122,7 @@ public:
         cout << "Identifikator str. + klC = " << porukaBr4.identifikatorStrujanja
              << ", hex = " << hex << porukaBr4.identifikatorStrujanja 
              << dec << endl;
+        //slaganje bajtova u mrežni oblik
         porukaBr4.identifikatorStrujanja = byteOrderMoj.toNetwork(porukaBr4.identifikatorStrujanja);
         porukaBr4.adresaIzvora.tipArdese = 0;
         porukaBr4.adresaIzvora.IPAdresa = 0;
@@ -203,7 +239,7 @@ int main(){
     string poruka;
 
     cout << getIPAddres() << endl << endl;
-    string IPAdresaPosluziteljaZaPronalazenje = "192.168.5.101";
+    string IPAdresaPosluziteljaZaPronalazenje = "192.168.5.100";
 
     SocketAddress sa("0.0.0.0", 12000);
     DatagramSocket ds(sa);
@@ -344,9 +380,28 @@ int main(){
                     cout << "\nPonovo poslati isti identifikator strujanja?(d/n) ";
                     cin >> ponovoPoslati;
                 } while (ponovoPoslati == 'd');
+                cout << "Poslati poruku MSG_STREAM_REMOVE sa istim identifikatorom strujanja?(d/n)" << endl;
+                cin >> ponovoPoslati;
+                if(ponovoPoslati == 'd'){
+                    A = porukaMajstor.STREAM_REMOVE();
+                    while (ponovoPoslati == 'd'){
+                        int n = ds.sendTo(A, 28, socAddrPosluziteljaZaPronalazenje);
+                        cout << "\n\tPoruka poslana serveru!!!" << endl << endl;
+                        cout << "\nPonovo poslati isti identifikator strujanja sa porukom MSG_STREAM_REMOVE?(d/n) ";
+                        cin >> ponovoPoslati;
+                    }
+                }
                 break;
+            case imePoruke::MSG_STREAM_REMOVE:
+                A = porukaMajstor.STREAM_REMOVE(true);
+                do{
+                    int n = ds.sendTo(A, 16, socAddrPosluziteljaZaPronalazenje);
+                    cout << "\n\tPoruka poslana serveru!!!" << endl << endl;
+                    cout << "\nPonovo poslati FIKSNI identifikator strujanja sa porukom MSG_STREAM_REMOVE?(d/n) ";
+                    cin >> ponovoPoslati;
+                } while (ponovoPoslati == 'd');
 
-            
+                break;
             case 0:
                 cout << "Kraj programa!!!!" << endl << endl;
                 break;
