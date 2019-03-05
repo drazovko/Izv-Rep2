@@ -34,10 +34,60 @@ enum imePoruke {
     MSG_REGISTER_FORWARDING 
 };
 
+
+class PrikazPorukeUHexuPoBajtovima
+{
+private:
+    u_char B;
+    int BB;
+    bool ponoviti = true;
+    int i = 1;
+    int j = 0;
+    int k = 0;
+public:
+    PrikazPorukeUHexuPoBajtovima(/* args */) { }
+    ~PrikazPorukeUHexuPoBajtovima() { }
+
+    void PrikaziPorukuPoBajtovima(u_char* A, int brojBajtova, bool prikazSlova = false){
+        cout << "\nPrikaz poruke po bajtovima u hexu: " << endl;
+        int granica = brojBajtova;
+        if(brojBajtova > 24){
+            granica = 24;        
+        }
+        do
+        {
+            for(; i<=granica; i++){
+                if(i<10){
+                cout << 0;
+                }
+                cout << i << " ";
+            }
+            cout << endl << hex;
+            for(; j<granica; j++){
+                if((int)A[j] < 16) cout << 0;
+                BB = (int)A[j];
+                cout << BB << " ";
+            }
+            cout << endl << dec;
+            for(; k<granica; k++){
+                cout << " ";
+                B = A[k];
+                cout << B << " ";
+            }
+            cout << endl << endl << dec;
+            if(granica == brojBajtova) ponoviti = false;
+            granica = granica + 24;
+            if(granica > brojBajtova){
+                granica = brojBajtova;
+            }     
+        } while (ponoviti);
+    }
+};
+
 class PorukaMajstor
 {
 private:
-    string poruka;
+    //string poruka;
     uint64_t identifikatorStrujanja;
     Poco::ByteOrder byteOrderMoj;
     
@@ -73,13 +123,7 @@ public:
     } porukaBr15;
     PorukaMajstor() { }
     ~PorukaMajstor() { }
-    string Ping(){
-        poruka.clear();
-        uint8_t tipPoruke = 1;
-        poruka.append(to_string(tipPoruke));
-        poruka.append("Ovo je ping poruka");
-        return poruka;
-    }
+
     u_char* REQ_RELAY_LIST(){
         cout << "\n\tSlazem poruku MSG_REQ_RELAY_LIST: " << endl << endl;
         porukaBr15.tipPoruke = MSG_REQ_RELAY_LIST;
@@ -126,7 +170,8 @@ public:
              << dec << endl;
         u_char* A;
         A = (u_char*)&porukaBr9;
-        PrikazPorukePoBajtovima(A, 16);
+        PrikazPorukeUHexuPoBajtovima prikazPorukeUHexuPoBajtovima;
+        prikazPorukeUHexuPoBajtovima.PrikaziPorukuPoBajtovima(A, 16);
         return A;
     }
     u_char* STREAM_REMOVE(bool fiksniIdentifikator = false){
@@ -214,29 +259,6 @@ public:
         }
         cout << endl << dec;
         return A;
-    }
-
-    string STREAM_ADVERTISEMENT() {
-        poruka.clear();
-        uint8_t tipPoruke = MSG_STREAM_ADVERTISEMENT;
-        poruka.append(to_string(tipPoruke));
-        uint64_t klasaC = 0x4000000000000000;
-        cout << "Klasa C = " << klasaC << ", hex = " << hex << klasaC << endl;
-
-        IdentifikatorStrujanja();
-        cout << "Identifikator strujanja = " << dec << identifikatorStrujanja
-             << ", hex = " << hex << identifikatorStrujanja << endl;
-        identifikatorStrujanja = identifikatorStrujanja | klasaC;
-
-        cout << "Identifikator strujanja i klasa C = " << dec << identifikatorStrujanja
-             << ", hex = " << hex << identifikatorStrujanja << endl;
-        
-        uint64_t testidentifikator = byteOrderMoj.toBigEndian(identifikatorStrujanja);
-        testidentifikator = byteOrderMoj.toLittleEndian(identifikatorStrujanja);
-        testidentifikator = byteOrderMoj.toNetwork(identifikatorStrujanja);
-        
-        poruka.append(to_string(testidentifikator));
-        return poruka;
     }
 
 private:
@@ -358,14 +380,18 @@ int main(){
 
         cout << "\tPoruke REPRODUKTORA multimedije prema Poslužitelju za pronalaženje" << endl << endl;
         cout << "\t\t7\tMSG_FIND_STREAM_SOURCE\n"
-             << "\t\t12\tMSG_FORWARD_PLAYER_READY\n";
+             << "\t\t12\tMSG_FORWARD_PLAYER_READY\n" << endl;
+        cout << "\tPoruke Poslužitelja posrednika prema Poslužitelju za pronalaženje" << endl << endl;
+        cout << "\t\t20\tPoslužitelj posrednik na prijemu 30 sec i čeka ping" << endl << endl;
         cout << "\nKraj programa = 0\n" << endl;
         
 
         cout << "Unesite broj poruke: ";
         cin >> brojKomande;
-        u_char* A;
+        u_char* A = nullptr;
         char ponovoPoslati = 'n';
+        bool ispisParametara = true;
+        int brojPrimljenihBajtova = 0;
         switch (brojKomande)
         {
             case 44:
@@ -690,6 +716,33 @@ int main(){
                     catch(const std::exception& e)
                     {
                         std::cerr << e.what() << '\n';
+                    }
+                break;
+            case 20:                                //6. prinma Ping - šalje Pong. Testirano, radi ok :-)
+                cout << "---------------Čekam PING poruku sa Poslužitelja za pronalaženje---------" << endl << endl;
+                try
+                    {
+                        timeSpanZaPrijem.assign(10, vrijemeCekanjaUMiliSecReceiveFrom);
+                        ds.setReceiveTimeout(timeSpanZaPrijem);
+                        brojPrimljenihBajtova = ds.receiveFrom(poljeZaPrijem, sizeof(poljeZaPrijem), posiljatelj);    
+                        timeSpanZaPrijem.assign(3, vrijemeCekanjaUMiliSecReceiveFrom);
+                        ds.setReceiveTimeout(timeSpanZaPrijem);
+                    }
+                    catch(const std::exception& e)
+                    {
+                        std::cerr << e.what() << '\n';
+                        cout << "   Nije došla nikakva poruka!!!" << endl << endl;
+                        ispisParametara = false;
+                    }
+                    if(ispisParametara){
+                        cout << "   Dolazna poruka u mreznom obliku:" << endl << endl;
+                        PrikazPorukeUHexuPoBajtovima prikazPorukeUHexuPoBajtovima;
+                        prikazPorukeUHexuPoBajtovima.PrikaziPorukuPoBajtovima(poljeZaPrijem, brojPrimljenihBajtova, true);
+                        poljeZaPrijem[0] = 0x32;
+                        PrikazPorukeUHexuPoBajtovima prikazPorukeUHexuPoBajtovima2;
+                        prikazPorukeUHexuPoBajtovima2.PrikaziPorukuPoBajtovima(poljeZaPrijem, brojPrimljenihBajtova, true);
+                        int n = ds.sendTo(poljeZaPrijem, brojPrimljenihBajtova, socAddrPosluziteljaZaPronalazenje);
+                        cout << "\n\tOdgovor poslan serveru!!!" << endl << endl;
                     }
                 break;
             case MSG_PONG:
